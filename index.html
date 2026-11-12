@@ -58,4 +58,147 @@ function linkButton(text,url){const b=document.createElement('button');b.classNa
 function choose(effect,result){for(const [k,v] of Object.entries(effect)){if(k==='Community')community=Math.max(0,Math.min(3,community+v));else stats[k]=Math.max(0,Math.min(5,(stats[k]||0)+v))}step++;response=result;render()}
 function startStory(){step=0;response='';render()}function restart(){stats={...initial};community=0;step=-1;response='';ending=false;render()}
 render();
+</script><script>
+// End-of-story sequence for the standalone web build.
+(function () {
+  let endingStage = 0;
+  let estimateTimer = null;
+
+  const estimateSource = 'https://www.oxfam.de/system/files/documents/methodology_note_inequality_kills.pdf';
+  const unicefAppeal = 'https://www.unicef.org/appeals/south-sudan';
+  const wfpAppeal = 'https://www.wfp.org/emergencies/south-sudan-emergency';
+
+  const addDarkStyles = () => {
+    if (document.getElementById('ending-dark-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'ending-dark-styles';
+    style.textContent = `
+      body.dark{background:#07080b;color:#f4f1e9}
+      body.dark .brand,body.dark .small,body.dark .footer{color:#aeb3bb}
+      body.dark .art{background:#07080b;box-shadow:none}
+      body.dark .card{background:#07080b;border-color:#272a30;box-shadow:none;color:#f4f1e9}
+      body.dark .story{color:#d0d2d6}
+      body.dark .status{border-color:#30343a;color:#aeb4bd}
+      body.dark .progress{background:#23262c}
+      body.dark .choice{background:#15181d;color:#f3f0e9;border-color:#3a3e45}
+      body.dark .choice:hover,body.dark .choice:focus-visible{background:#232830;border-color:#87958d}
+      body.dark .choice.primary{background:#477c64;border-color:#477c64;color:white}
+      .rate-number{font:700 80px Arial,sans-serif;letter-spacing:-.06em}
+      .rate-caption{font:500 21px Arial,sans-serif;fill:#d2d5da}
+      .rate-sub{font:16px Arial,sans-serif;fill:#9299a4}
+      @media(max-width:620px){.rate-number{font-size:70px}.rate-caption{font-size:18px}.rate-sub{font-size:14px}}
+    `;
+    document.head.append(style);
+  };
+
+  function endingArt(mode) {
+    if (mode === 'rate') {
+      return '<svg viewBox="0 0 1440 300" role="img" aria-label="A global estimate: 0.25 deaths per second"><rect width="1440" height="300" fill="#07080b"/><text x="720" y="86" text-anchor="middle" fill="#aeb4bd" font-family="Arial" font-size="16" font-weight="700" letter-spacing="4">A GLOBAL ESTIMATE</text><text x="720" y="184" text-anchor="middle" class="rate-number" fill="#f7f4ed">0.25</text><text x="720" y="229" text-anchor="middle" class="rate-caption">deaths linked to inequality-related causes per second</text><text x="720" y="267" text-anchor="middle" class="rate-sub">about one person every four seconds</text></svg>';
+    }
+    return '<svg viewBox="0 0 1440 300" role="img" aria-label="Official ways to support children in South Sudan"><rect width="1440" height="300" fill="#07080b"/><circle cx="720" cy="88" r="36" fill="none" stroke="#73917d" stroke-width="3"/><path d="M720 111s-32-19-32-39a18 18 0 0 1 32-11 18 18 0 0 1 32 11c0 20-32 39-32 39Z" fill="#73917d"/><text x="720" y="172" text-anchor="middle" fill="#f4f1e9" font-family="Arial" font-size="25" font-weight="700">WAYS TO SUPPORT CHILDREN</text><text x="720" y="210" text-anchor="middle" fill="#c5c9ce" font-family="Arial" font-size="17">South Sudan · Official organization appeals</text></svg>';
+  }
+
+  function setDark(active) {
+    addDarkStyles();
+    document.body.classList.toggle('dark', active);
+  }
+
+  window.render = function () {
+    if (estimateTimer) {
+      clearInterval(estimateTimer);
+      estimateTimer = null;
+    }
+    $('choices').replaceChildren();
+    const start = step < 0;
+    const ending = step >= SCENES.length;
+    const tragic = ending && endingStage === 0;
+    const rate = ending && endingStage === 1;
+    const donation = ending && endingStage === 2;
+    const reflection = ending && endingStage >= 3;
+    setDark(rate || donation);
+    $('progress').style.width = (start ? 0 : ending ? 100 : (step + 1) / SCENES.length * 100) + '%';
+    $('response').textContent = response;
+
+    if (start) {
+      $('art').innerHTML = art('start');
+      $('counter').textContent = 'A choice-based story';
+      $('title').textContent = 'Service Project, 1324 Park Yuyeon';
+      $('story').textContent = 'Follow Lui from birth to age 17 in a community near Bor, Jonglei State. His story follows the daily pressure of too little food, costly trips to school and clinics, limited public services, and work that is never guaranteed.\n\nMake choices about school, food, health, work, and family responsibilities. Each choice has limits, and no single child can solve poverty alone.';
+      $('status').innerHTML = '<span>A family relies on seasonal work and small market trade. Their circumstances change from year to year.</span>';
+      $('prompt').textContent = 'Ready to begin?';
+      button('Start the story', startStory, true);
+      return;
+    }
+
+    if (tragic) {
+      $('art').innerHTML = art('tragedy');
+      $('counter').textContent = 'THE END';
+      $('title').textContent = 'Lui, too, became a star because of poverty.';
+      $('story').textContent = 'Shortly after turning 17, Lui becomes seriously ill with an infection. His family tries to get him treated, but the clinic has limited supplies, and the cost of transport, medicine, and missed work is more than they can manage. They ask for help and do what they can, yet treatment comes too late. Lui dies quietly, without a graphic scene.\n\nThis is not the result of one choice the player made. It is the result of needs his family could not reliably afford to meet: timely health care, medicine, enough food, and dependable support.';
+      $('status').innerHTML = '';
+      $('prompt').textContent = 'Take a moment, then continue.';
+      button('Continue', () => { endingStage = 1; render(); }, true);
+      return;
+    }
+
+    if (rate) {
+      $('art').innerHTML = endingArt('rate');
+      $('counter').textContent = 'A GLOBAL ESTIMATE';
+      $('title').textContent = 'Beyond Lui’s story';
+      $('story').textContent = 'This is an estimate, not a live global count. Oxfam’s 2022 report estimated at least 21,318 deaths a day linked to inequality-related causes, including unequal access to healthcare, hunger, gender-based violence, and climate impacts. The estimate combines data from different years; it does not mean poverty alone is the direct cause of every death.';
+      const openedAt = Date.now();
+      const updateEstimate = () => {
+        const estimate = ((Date.now() - openedAt) / 1000 * 0.25).toFixed(2);
+        $('status').textContent = 'Estimated deaths linked to inequality-related causes since this screen opened: ' + estimate;
+      };
+      updateEstimate();
+      estimateTimer = setInterval(updateEstimate, 250);
+      $('prompt').textContent = 'The rate comes from a 2022 report; it is not a live measurement.';
+      linkButton('Read Oxfam’s methodology note', estimateSource);
+      button('Continue to donation options', () => { endingStage = 2; render(); }, true);
+      return;
+    }
+
+    if (donation) {
+      $('art').innerHTML = endingArt('donation');
+      $('counter').textContent = 'WAYS TO HELP';
+      $('title').textContent = 'If you want to help';
+      $('story').textContent = 'These links lead to official organization pages about their South Sudan work. Any donation is completed on that organization’s website; this game does not collect payment information.';
+      $('status').textContent = 'You can continue without donating.';
+      $('prompt').textContent = 'Choose an organization or continue to the reflection.';
+      linkButton('UNICEF South Sudan Appeal', unicefAppeal);
+      linkButton('World Food Programme: South Sudan Emergency', wfpAppeal);
+      button('Continue to reflection', () => { endingStage = 3; render(); }, true);
+      return;
+    }
+
+    $('status').innerHTML = Object.entries(stats).map(([k,v]) => '<span class="stat"><b>' + esc(k) + '</b><span class="dots">' + '●'.repeat(v) + '○'.repeat(5-v) + '</span></span>').join('') + (reflection ? '<span class="stat"><b>Community support shared</b><span class="dots">' + community + '</span></span>' : '');
+    if (reflection) {
+      $('art').innerHTML = art('end');
+      $('counter').textContent = 'REFLECTION';
+      $('title').textContent = 'What should have been different?';
+      $('story').textContent = 'Lui’s story ends, but the choices around him remain. He wanted to learn, care for his family, and keep a promise to Sia. Too often, the family had to choose which need could wait.\n\nWhich part of Lui’s life stayed with you? What support could have changed the choices available to him before it was too late?';
+      $('prompt').textContent = 'Think about it: What support would give Lui and his family more choices?';
+      linkButton('UNICEF South Sudan: child and family survey','https://www.unicef.org/southsudan/press-releases/new-national-survey-shows-serious-challenges-children-south-sudan-also-clear-areas');
+      linkButton('World Food Programme: South Sudan emergency',wfpAppeal);
+      linkButton('World Bank: Poverty and basic services in South Sudan','https://www.worldbank.org/en/news/press-release/2024/12/10/new-report-reveals-that-poverty-and-vulnerability-remain-endemic-in-afe-south-sudan');
+      button('Play again', restart);
+      return;
+    }
+
+    const scene = SCENES[step];
+    $('art').innerHTML = art(scene.kind, scene.heading);
+    $('counter').textContent = (step + 1) + ' / ' + SCENES.length;
+    $('title').textContent = scene.heading;
+    $('story').textContent = scene.story + (response ? '\n\n' + response : '');
+    const age = +(scene.heading.match(/AGE (\d+)/) || [])[1] || 0;
+    $('prompt').textContent = age < 6 ? 'How should Lui’s family care for him? Each choice brings different help and challenges.' : 'What should Lui do now? Go to school, help at home, or ask for support.';
+    scene.options.forEach(([label,effect,result],i) => button((i + 1) + '.  ' + label, () => choose(effect,result)));
+  };
+
+  window.startStory = function () { step = 0; response = ''; render(); };
+  window.restart = function () { stats = {...initial}; community = 0; step = -1; response = ''; endingStage = 0; render(); };
+  render();
+})();
+
 </script></body></html>
